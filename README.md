@@ -88,11 +88,20 @@ The merged crate preserves and extends the original boundary:
    SQLx backend errors.
 
 One-time invitation acceptance merged through
-[`zed-lib-core#2`](https://github.com/zed-pkg/zed-lib-core/pull/2) as
-`79c30f65c676f6eb304effe2a7abf969f22f2da8`.
+[`zed-lib-core#2`](https://github.com/zed-pkg/zed-lib-core/pull/2) as:
 
-The remaining registry upload/download/license/embedding and search operations
-are tracked by [`zed-lib-core#3`](https://github.com/zed-pkg/zed-lib-core/pull/3).
+```text
+79c30f65c676f6eb304effe2a7abf969f22f2da8
+```
+
+The canonical upload/download/license/embedding operations and visibility-aware
+text/semantic search merged through
+[`zed-lib-core#3`](https://github.com/zed-pkg/zed-lib-core/pull/3) as:
+
+```text
+d9a1f72baad87a0bbe256ad892d61d7a4fdd9135
+```
+
 The item-by-item predecessor mapping is in
 [`PREDECESSOR_MIGRATION.md`](https://github.com/zed-pkg/zed-lib-core/blob/main/PREDECESSOR_MIGRATION.md).
 
@@ -103,8 +112,8 @@ The item-by-item predecessor mapping is in
 - Keep historical branches and commits available for audit.
 - New bugs, features, and pull requests belong in
   [`zed-pkg/zed-lib-core`](https://github.com/zed-pkg/zed-lib-core).
-- This repository may be archived after the canonical registry-data-plane port
-  is merged and no unique predecessor work remains.
+- This repository may now be archived as a read-only historical entry point;
+  every substantive predecessor contract has a merged canonical disposition.
 
 ## License
 
