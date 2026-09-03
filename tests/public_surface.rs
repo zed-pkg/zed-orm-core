@@ -42,19 +42,38 @@ fn every_write_symbol_is_feature_gated() {
 }
 
 #[test]
-fn shared_schema_source_is_exact_and_external() {
-    let lock = read("shared-defs.lock.json");
+fn dual_source_contract_is_external_independent_and_same_org() {
+    let source_lock = read("contracts/source-lock.toml");
     for contract in [
-        "c8bdc06d74746acc6439f9527ebd02697fdf028b",
-        "\"org_slice\": \"zed-pkg\"",
-        "\"schema\": \"zed_pkg\"",
-        "pg-defs/generated/rust/sea-orm",
+        "format = \"ores.core-source-lock/v1\"",
+        "interfaces_repository = \"zed-pkg/zed-interfaces\"",
+        "typespec_commit =",
+        "typespec_sha256 =",
+        "json_schema_commit =",
+        "json_schema_sha256 =",
+        "comparator_version =",
     ] {
-        assert!(lock.contains(contract), "shared-defs lock lost {contract}");
+        assert!(
+            source_lock.contains(contract),
+            "dual-source lock lost {contract}"
+        );
+    }
+
+    let boundary = read("core-boundary.toml");
+    for coordinate in [
+        "repository = \"zed-pkg/zed-orm-core\"",
+        "interfaces_repository = \"zed-pkg/zed-interfaces\"",
+        "lib_core_repository = \"zed-pkg/zed-lib-core\"",
+        "orm_core_repository = \"zed-pkg/zed-orm-core\"",
+        "finalization = \"fail-closed\"",
+    ] {
+        assert!(boundary.contains(coordinate), "boundary lost {coordinate}");
     }
 
     let zpkg = read(".zpkg.toml");
-    assert!(zpkg.contains("\"oresoftware/k8s-libs-and-shared-defs\""));
+    assert!(zpkg.contains("\"zed-pkg/zed-interfaces\""));
+    assert!(zpkg.contains("\"zed-pkg/zed-lib-core\""));
+    assert!(!zpkg.contains("k8s-libs-and-shared-defs"));
 }
 
 #[test]
