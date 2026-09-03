@@ -1,120 +1,29 @@
-# zed-orm-core — moved to `zed-lib-core`
+# zed-orm-core
 
-> **Historical repository.** The `zed-orm-core` Rust crate is now maintained in
-> [`zed-pkg/zed-lib-core`](https://github.com/zed-pkg/zed-lib-core) at
-> [`src/rust-orm`](https://github.com/zed-pkg/zed-lib-core/tree/main/src/rust-orm).
-> This repository remains available so existing commit pins, branches, issues,
-> pull requests, and audit links continue to resolve.
+Canonical private, backend-only ORM boundary for the zed-pkg organization.
 
-The crate name and Rust import remain compatible:
+This repository supersedes the historical decision to place the package in `zed-lib-core/src/rust-orm`. Executable Diesel/SeaORM entities, repositories, named database capabilities, and backend database configuration finalize here only. `zed-lib-core` remains shared code with explicit client, server, edge, and isomorphic surfaces; it may retain normalized ORM comparison evidence but never executable ORM code.
 
-```rust
-use zed_orm_core::{connect_read_only, read};
-```
+## Dual-source contract
 
-Only the Git source changes.
+`zed-interfaces` keeps independently authored TypeSpec and JSON Schema Draft 2020-12/OpenAPI inputs. This repository and `zed-lib-core` independently consume the same immutable source revision and produce normalized interface, persistence, SQL/catalog, and ORM evidence. Publication is blocked unless every pair agrees and the exact evidence is recorded in `artifacts/agreement.lock`.
 
-## Consumer migration
+Neither TypeSpec, JSON Schema, Diesel, nor SeaORM wins automatically. Differences stop CI, package publication, migration promotion, and consumer updates for review.
 
-Default read-only consumer:
+## Runtime boundary
 
-```toml
-zed-orm-core = {
-  git = "https://github.com/zed-pkg/zed-lib-core.git",
-  rev = "<reviewed-zed-lib-core-commit>"
-}
-```
+- Default capabilities are read-only; write APIs require a separate explicit type/feature.
+- Raw database connections and generic SQL do not escape the crate.
+- Application startup never runs migrations or DDL.
+- Named operations are bounded, tenant-aware, typed, and covered by negative-access tests.
+- DPM owns reviewed migration planning/application.
 
-API/write consumer:
+## Environment and dependencies
 
-```toml
-zed-orm-core = {
-  git = "https://github.com/zed-pkg/zed-lib-core.git",
-  rev = "<reviewed-zed-lib-core-commit>",
-  default-features = false,
-  features = ["read-write"]
-}
-```
+Accept typed backend configuration inward. Use `flags-2-env` at executable boundaries and `ores-sops` plus SOPS/age for encrypted environment files. A separate `zed-env` package is justified only when multiple repositories/runtimes share one configuration schema, and it never contains values or secrets.
 
-The package continues to live in `src/rust-orm` with package name
-`zed-orm-core`. Default builds remain read-only; API servers enable
-`read-write`; only the discrete migration job enables `migrate`.
+The root `.zpkg.toml` pins `zed-pkg/zed-interfaces` and `zed-pkg/zed-lib-core`; native metadata must resolve the same reviewed revisions. The old centralized shared-definitions package is not a product schema or ORM authority.
 
-## Preserved merge history
+## Blocking visibility requirement
 
-The canonical repository is a two-parent semantic merge of the `zed-lib` and
-`zed-orm-core` histories:
-
-```text
-f27f72cc65640407409d38953c8d30ee4c95f3a6
-```
-
-Parents:
-
-```text
-430aafe24b6c3ab1263f1351ab4941545f592f19  zed-lib lineage
-a5dabf3685db94ffdf5ae30cb3b3e4cc1cce298f  zed-orm-core lineage
-```
-
-The conceptual fold is:
-
-```text
-9fdc5fed96b707b99b3b02e6541060831c3d70fd
-```
-
-Canonical package, schema, API, storage, and feature-boundary certification
-merged through [`zed-lib-core#1`](https://github.com/zed-pkg/zed-lib-core/pull/1)
-as:
-
-```text
-171ee6a3ba82a492409ef86e27af793574942447
-```
-
-## Canonical contract
-
-The merged crate preserves and extends the original boundary:
-
-1. **Schema ownership is external.** The exact shared registry SQL comes from
-   `ORESoftware/k8s-libs-and-shared-defs`, pinned by
-   `zed-lib-core/shared-defs.lock.json`.
-2. **Raw sessions do not escape.** Consumers receive opaque `ReadContext` or
-   `WriteContext` values and call named `read`, `registry`, `write`, or
-   feature-gated `invitations` operations.
-3. **Writes remain opt-in.** Default builds cannot import write or migration
-   symbols; the authoritative control remains the database principal.
-4. **Canonical tables use the `zed_` prefix.** Transitional unprefixed tables
-   and independently authored migration schemas are retired.
-5. **Public errors are stable.** The crate exposes `OrmError`, not raw SeaORM or
-   SQLx backend errors.
-
-One-time invitation acceptance merged through
-[`zed-lib-core#2`](https://github.com/zed-pkg/zed-lib-core/pull/2) as:
-
-```text
-79c30f65c676f6eb304effe2a7abf969f22f2da8
-```
-
-The canonical upload/download/license/embedding operations and visibility-aware
-text/semantic search merged through
-[`zed-lib-core#3`](https://github.com/zed-pkg/zed-lib-core/pull/3) as:
-
-```text
-d9a1f72baad87a0bbe256ad892d61d7a4fdd9135
-```
-
-The item-by-item predecessor mapping is in
-[`PREDECESSOR_MIGRATION.md`](https://github.com/zed-pkg/zed-lib-core/blob/main/PREDECESSOR_MIGRATION.md).
-
-## Repository policy
-
-- Do not open new feature or release work here.
-- Do not publish a new crate or repository-level release from this repository.
-- Keep historical branches and commits available for audit.
-- New bugs, features, and pull requests belong in
-  [`zed-pkg/zed-lib-core`](https://github.com/zed-pkg/zed-lib-core).
-- This repository may now be archived as a read-only historical entry point;
-  every substantive predecessor contract has a merged canonical disposition.
-
-## License
-
-MIT
+This repository is currently public. It must be changed to private before executable ORM consolidation or release. CI intentionally reports that live repository-metadata blocker. No credentials or sensitive schema material should be added while it remains public.

@@ -1,15 +1,16 @@
 [package]
 org = "zed-pkg"
 name = "zed-orm-core"
-version = "0.1.0"
-description = "Canonical opaque SeaORM boundary for the zed-pkg organization"
+version = "0.2.0"
+description = "Private backend-only Diesel and SeaORM boundary for zed-pkg"
 
 [package.repository]
 vcs = "git"
 url = "https://github.com/zed-pkg/zed-orm-core"
 
 [dependencies]
-"oresoftware/k8s-libs-and-shared-defs" = "^0.1.0"
+"zed-pkg/zed-interfaces" = "^0.1.0"
+"zed-pkg/zed-lib-core" = "^0.2.0"
 
 [publish]
 include_readme = true
@@ -17,8 +18,14 @@ tag_format = "v{version}"
 exclude = [
   ".env",
   ".env.*",
+  "env/dec/**",
   ".vendor/.zed/**",
+  ".zed/**",
+  ".zed-pack/**",
   "target/**",
+  "**/target/**",
+  "**/node_modules/**",
+  "**/.dart_tool/**",
   "**/*.log",
 ]
 
@@ -28,10 +35,6 @@ dir = ".vendor/.zed"
 [targets.rust]
 dir = "."
 adapter = "rust"
-
-# This private boundary is consumed through an exact reviewed Git/Zed package
-# object. Do not advertise a native registry until Cargo publication and
-# licensing are explicitly enabled and certified.
 
 [scripts]
 format = "cargo fmt --all -- --check"
