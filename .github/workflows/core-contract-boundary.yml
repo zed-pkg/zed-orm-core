@@ -1,0 +1,57 @@
+name: core-contract-boundary
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+    tags: ['v*']
+
+permissions:
+  contents: read
+
+concurrency:
+  group: core-contract-boundary-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  boundary:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+        with:
+          persist-credentials: false
+      - name: Install pinned Rust toolchain
+        run: rustup toolchain install 1.88.0 --profile minimal
+      - name: Fetch pinned fleet guard
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --fail --silent --show-error --location \
+            https://raw.githubusercontent.com/zed-pkg/zed-lib-core/8c62c5b67d2e7919054a173b3295dcc0dd64f307/tools/core-contract-guard.rs \
+            --output /tmp/core-contract-guard.rs
+          echo '67f0e81ebe0230a69ae145776cb148797715158e8a6bd61d8d34dcf398a5f06a  /tmp/core-contract-guard.rs' | sha256sum --check --strict
+      - name: Compile and test guard
+        run: |
+          rustc +1.88.0 --edition=2021 --test /tmp/core-contract-guard.rs -o /tmp/core-contract-guard-tests
+          /tmp/core-contract-guard-tests
+          rustc +1.88.0 --edition=2021 -D warnings /tmp/core-contract-guard.rs -o /tmp/core-contract-guard
+      - name: Validate ORM boundary
+        run: /tmp/core-contract-guard --kind orm-core
+      - name: Block public ORM repositories
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          private="$(gh api "repos/${GITHUB_REPOSITORY}" --jq .private)"
+          test "$private" = true || { echo 'orm-core must be private before executable ORM consolidation or release' >&2; exit 1; }
+      - name: Reject plaintext environment files
+        shell: bash
+        run: |
+          set -euo pipefail
+          bad="$(git ls-files | grep -E '(^|/)(\.env($|\.)|env/dec/)' | grep -vE '(^|/)\.env\.example$' || true)"
+          test -z "$bad" || { printf 'plaintext environment paths are forbidden:\n%s\n' "$bad" >&2; exit 1; }
+      - name: Require complete release evidence
+        if: startsWith(github.ref, 'refs/tags/')
+        run: /tmp/core-contract-guard --kind orm-core --require-evidence
