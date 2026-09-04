@@ -9,6 +9,8 @@ vcs = "git"
 url = "https://github.com/zed-pkg/zed-orm-core"
 
 [dependencies]
+"zed-pkg/zed-interfaces" = "^0.1.0"
+"zed-pkg/zed-lib-core" = "^0.1.0"
 "oresoftware/k8s-libs-and-shared-defs" = "^0.1.0"
 
 [publish]
