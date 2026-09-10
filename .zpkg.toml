@@ -35,9 +35,7 @@ adapter = "rust"
 # object. Do not advertise a native registry until Cargo publication and
 # licensing are explicitly enabled and certified.
 
+# Zed package manifests expose only the package-level `test` hook. Developer
+# task decomposition belongs to zed-env.toml schema 2.
 [scripts]
-format = "cargo fmt --all -- --check"
-lint = "cargo clippy --all-targets --all-features -- -D warnings"
-test-default = "cargo test --all-targets"
-test-read-write = "cargo test --all-targets --all-features"
-test-doc = "cargo test --doc"
+test = "cargo test --all-targets --all-features && cargo test --doc"
