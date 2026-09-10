@@ -1,0 +1,25 @@
+schema = 2
+
+[tasks.format]
+description = "Check Rust formatting"
+run = ["cargo fmt --all -- --check"]
+
+[tasks.lint]
+description = "Lint the complete read/write feature surface"
+run = ["cargo clippy --all-targets --all-features -- -D warnings"]
+
+[tasks.test-default]
+description = "Test the default read-only surface"
+run = ["cargo test --all-targets"]
+
+[tasks.test-read-write]
+description = "Test the explicit read-write feature surface"
+run = ["cargo test --all-targets --all-features"]
+
+[tasks.test-doc]
+description = "Compile documentation and compile-fail policy examples"
+run = ["cargo test --doc"]
+
+[tasks.test]
+description = "Run the package-level release test contract"
+run = ["cargo test --all-targets --all-features", "cargo test --doc"]
