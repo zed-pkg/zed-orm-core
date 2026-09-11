@@ -11,8 +11,15 @@ concurrency:
   cancel-in-progress: true
 jobs:
   admission:
-    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, macos-15, windows-2025]
+    runs-on: ${{ matrix.os }}
     timeout-minutes: 20
+    defaults:
+      run:
+        shell: bash
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
@@ -27,7 +34,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           repository: ORESoftware/typespec-json-schema-validator
-          ref: 2281843126ab644607b11cf8281d84f382d68dfc
+          ref: 5b04b08512f8a03a376dcb96818969e2d83c2d84
           path: tmp/tjsv-validator
           persist-credentials: false
       - name: Verify consumer and producer source revisions
@@ -36,7 +43,7 @@ jobs:
         run: |
           test "$(git rev-parse HEAD)" = "$EXPECTED_SHA"
           test "$(git -C tmp/tjsv-authorities rev-parse HEAD)" = 4b8a0a2a466acb82abc286879695b2e5ac21fef8
-          test "$(git -C tmp/tjsv-validator rev-parse HEAD)" = 2281843126ab644607b11cf8281d84f382d68dfc
+          test "$(git -C tmp/tjsv-validator rev-parse HEAD)" = 5b04b08512f8a03a376dcb96818969e2d83c2d84
           git -C tmp/tjsv-authorities diff --exit-code HEAD
           git -C tmp/tjsv-validator diff --exit-code HEAD
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
@@ -67,7 +74,7 @@ jobs:
             --contract-ir=tmp/tjsv-admission/contract-ir.json \
             --seal-object-schemas=false --format-assertion=true --probes=true --max-probes=64 --quiet
       - name: Require positive admission and canonical refusal regressions
-        uses: ORESoftware/typespec-json-schema-validator/actions/test-consumer-admission@2281843126ab644607b11cf8281d84f382d68dfc
+        uses: ORESoftware/typespec-json-schema-validator/actions/test-consumer-admission@5b04b08512f8a03a376dcb96818969e2d83c2d84
         with:
           contract_ir: tmp/tjsv-admission/contract-ir.json
           report: tmp/tjsv-admission/report.json
@@ -83,7 +90,7 @@ jobs:
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         if: ${{ always() }}
         with:
-          name: tjsv-public-consumer-${{ github.event.pull_request.head.sha || github.sha }}
+          name: tjsv-public-consumer-${{ matrix.os }}-${{ github.event.pull_request.head.sha || github.sha }}
           path: tmp/tjsv-admission/
           if-no-files-found: error
           retention-days: 14
