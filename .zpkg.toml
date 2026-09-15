@@ -2,6 +2,7 @@
 org = "zed-pkg"
 name = "zed-orm-core"
 version = "0.1.0"
+kind = "orm-core"
 description = "Canonical opaque SeaORM boundary for the zed-pkg organization"
 language = "rust"
 
@@ -16,6 +17,7 @@ url = "https://github.com/zed-pkg/zed-orm-core"
 [publish]
 include_readme = true
 tag_format = "v{version}"
+smoke_test = "sh \"$ZED_PKG_TEST_TARGET/scripts/tests/smoke-published-artifact.sh\""
 exclude = [
   ".env",
   ".env.*",
