@@ -2,7 +2,6 @@
 org = "zed-pkg"
 name = "zed-orm-core"
 version = "0.1.0"
-kind = "orm-core"
 description = "Canonical opaque SeaORM boundary for the zed-pkg organization"
 language = "rust"
 
