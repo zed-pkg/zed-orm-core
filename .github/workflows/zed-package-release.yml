@@ -99,8 +99,12 @@ jobs:
             test "$source_commit" = a78baf355e8ba3b98fa09780af9f67e8b7c12b85
           fi
 
-          candidate="$RUNNER_TEMP/zpkg-zed-pkg-zed-orm-core-${version}.tar.gz"
-          zed pack --out "$candidate"
+          out_dir="$RUNNER_TEMP/repair-pack"
+          mkdir -p "$out_dir"
+          zed pack --out "$out_dir"
+          mapfile -t candidates < <(find "$out_dir" -maxdepth 1 -type f -name '*.tar.gz' -print)
+          test "${#candidates[@]}" -eq 1
+          candidate="${candidates[0]}"
           test -s "$candidate"
           sha256="$(sha256sum "$candidate" | awk '{print $1}')"
           size="$(stat -c '%s' "$candidate")"
