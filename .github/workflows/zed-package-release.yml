@@ -1,0 +1,160 @@
+name: Historical Zed package repair candidate
+
+on:
+  pull_request:
+    paths:
+      - .github/workflows/zed-package-release.yml
+      - .zpkg.toml
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/zed-package-release.yml
+      - .zpkg.toml
+  workflow_dispatch:
+    inputs:
+      release_ref:
+        description: Exact immutable tag to reproduce
+        required: true
+        default: v0.1.0
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: zed-package-repair-candidate-${{ github.event_name }}-${{ github.ref }}-${{ inputs.release_ref || 'automatic' }}
+  cancel-in-progress: false
+
+env:
+  # Fixed resolver/packer with deterministic GitHub-tag repacking semantics.
+  ZED_CLI_COMMIT: eb5656e974105677982f533c6ae24f2c99abdf2e
+  ZED_PKG_INTERACTIVE: 'false'
+  HISTORICAL_ADVERTISED_SHA256: d1900758d0908f47efb0f1c8a1156ab9b4e909ffcb235c1f097be01574a6464b
+  DETERMINISTIC_REPLACEMENT_SHA256: 7389ad3ebf716cd5080e4c48920369ee894648f0afbb556ffbca1bcce5caf626
+
+jobs:
+  prove-repair-candidate:
+    name: reproduce immutable repair candidate
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - name: Resolve immutable release ref
+        id: release
+        shell: bash
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          DISPATCH_REF: ${{ inputs.release_ref }}
+        run: |
+          set -euo pipefail
+          if [ "$EVENT_NAME" = workflow_dispatch ]; then
+            release_ref="$DISPATCH_REF"
+          else
+            release_ref=v0.1.0
+          fi
+          case "$release_ref" in
+            v[0-9]*) ;;
+            *) echo "release_ref must be an immutable v* tag" >&2; exit 2 ;;
+          esac
+          echo "release_ref=$release_ref" >> "$GITHUB_OUTPUT"
+
+      - name: Check out exact package tag
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          ref: ${{ steps.release.outputs.release_ref }}
+          path: package
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Check out exact fixed Zed CLI source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          repository: zed-pkg/zed-cli
+          ref: ${{ env.ZED_CLI_COMMIT }}
+          path: zed-cli
+          persist-credentials: false
+
+      - name: Build pinned deterministic Zed packer
+        working-directory: zed-cli
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$ZED_CLI_COMMIT"
+          cargo build --locked --bin zed
+          mkdir -p "$RUNNER_TEMP/zed-bin"
+          install -m 0755 target/debug/zed "$RUNNER_TEMP/zed-bin/zed"
+          echo "$RUNNER_TEMP/zed-bin" >> "$GITHUB_PATH"
+
+      - name: Reproduce and prove deterministic replacement bytes
+        id: candidate
+        working-directory: package
+        shell: bash
+        env:
+          RELEASE_REF: ${{ steps.release.outputs.release_ref }}
+        run: |
+          set -euo pipefail
+          source_commit="$(git rev-parse HEAD)"
+          git tag --points-at HEAD | grep -Fx "$RELEASE_REF" >/dev/null
+          version="${RELEASE_REF#v}"
+          if [ "$RELEASE_REF" = v0.1.0 ]; then
+            test "$source_commit" = a78baf355e8ba3b98fa09780af9f67e8b7c12b85
+          fi
+
+          out_dir="$RUNNER_TEMP/repair-pack"
+          mkdir -p "$out_dir"
+          zed pack --out "$out_dir"
+          mapfile -t candidates < <(find "$out_dir" -maxdepth 1 -type f -name '*.tar.gz' -print)
+          test "${#candidates[@]}" -eq 1
+          candidate="${candidates[0]}"
+          test -s "$candidate"
+          sha256="$(sha256sum "$candidate" | awk '{print $1}')"
+          size="$(stat -c '%s' "$candidate")"
+
+          output="$(zed publish --dry-run 2>&1)"
+          printf '%s\n' "$output"
+          printf '%s\n' "$output" \
+            | grep -F "dry run: would publish zed-pkg/zed-orm-core@${version} " \
+            | grep -F "sha256 ${sha256})" >/dev/null
+
+          if [ "$RELEASE_REF" = v0.1.0 ]; then
+            test "$sha256" = "$DETERMINISTIC_REPLACEMENT_SHA256"
+            test "$sha256" != "$HISTORICAL_ADVERTISED_SHA256"
+          fi
+
+          jq -n \
+            --arg schema "zed.package-historical-repair-evidence/v1" \
+            --arg org "zed-pkg" \
+            --arg package "zed-orm-core" \
+            --arg version "$version" \
+            --arg vcs_tag "$RELEASE_REF" \
+            --arg vcs_commit "$source_commit" \
+            --arg old_sha256 "$HISTORICAL_ADVERTISED_SHA256" \
+            --arg replacement_sha256 "$sha256" \
+            --argjson replacement_size "$size" \
+            --arg repair_class "legacy-github-archive-v0.3.0" \
+            '{
+              schema: $schema,
+              org: $org,
+              package: $package,
+              version: $version,
+              vcs_tag: $vcs_tag,
+              vcs_commit: $vcs_commit,
+              repair_class: $repair_class,
+              historical_advertised_sha256: $old_sha256,
+              replacement_sha256: $replacement_sha256,
+              replacement_size_bytes: $replacement_size
+            }' > "$RUNNER_TEMP/repair-evidence.json"
+
+          {
+            echo "candidate=$candidate"
+            echo "evidence=$RUNNER_TEMP/repair-evidence.json"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Retain candidate bytes and repair evidence
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v4
+        with:
+          name: zed-orm-core-v0.1.0-historical-repair-candidate
+          path: |
+            ${{ steps.candidate.outputs.candidate }}
+            ${{ steps.candidate.outputs.evidence }}
+          if-no-files-found: error
+          retention-days: 30
